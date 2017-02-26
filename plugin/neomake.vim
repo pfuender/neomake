@@ -21,6 +21,34 @@ command! -bang NeomakeCancelJobs call neomake#CancelJobs(<bang>0)
 
 command! -bar NeomakeInfo call neomake#DisplayInfo()
 
+function! NeomakeToggle(scope)
+  let new = !get(get(a:scope, 'neomake', {}), 'disabled', 0)
+  if new
+    call neomake#config#set_dict(a:scope, 'neomake.disabled', new)
+  else
+    call neomake#config#unset_dict(a:scope, 'neomake.disabled')
+  endif
+  " let a:scope.neomake_disabled = new
+  if &verbose
+    let [disabled, source] = neomake#config#get_with_source('disabled', -1)
+    let msg = 'Neomake is ' . (disabled ? 'disabled' : 'enabled')
+    if source !=# 'default'
+      let msg .= ' (via '.source.')'
+    endif
+    echom msg.'.'
+  endif
+endfun
+
+command! NeomakeToggle call NeomakeToggle(g:)
+command! NeomakeToggleBuffer call NeomakeToggle(b:)
+command! NeomakeToggleTab call NeomakeToggle(t:)
+command! NeomakeDisable call neomake#config#set_dict(g:, 'neomake.disabled', 1)
+command! NeomakeDisableBuffer call neomake#config#set_dict(b:, 'neomake.disabled', 1)
+command! NeomakeDisableTab call neomake#config#set_dict(t:, 'neomake.disabled', 1)
+command! NeomakeEnable call neomake#config#set_dict(g:, 'neomake.disabled', 0)
+command! NeomakeEnableBuffer call neomake#config#set_dict(b:, 'neomake.disabled', 0)
+command! NeomakeEnableTab call neomake#config#set_dict(t:, 'neomake.disabled', 0)
+
 augroup neomake
   au!
   if !exists('*nvim_buf_add_highlight')
