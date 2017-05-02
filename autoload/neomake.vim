@@ -152,6 +152,14 @@ function! s:gettabwinvar(t, w, v, d) abort
     return r
 endfunction
 
+let s:jobinfo_base = {}
+function! s:jobinfo_base.get_pid() abort
+    if has_key(self, 'vim_job')
+        return job_info(self.vim_job).process
+    endif
+    return jobpid(self.id)
+endfunction
+
 function! s:MakeJob(make_id, options) abort
     let job_id = s:job_id
     let s:job_id += 1
@@ -160,13 +168,13 @@ function! s:MakeJob(make_id, options) abort
     "  - serialize (default: 0)
     "  - serialize_abort_on_error (default: 0)
     "  - exit_callback (string/function, default: 0)
-    let jobinfo = extend({
+    let jobinfo = extend(copy(s:jobinfo_base), extend({
         \ 'name': 'neomake_'.job_id,
         \ 'maker': a:options.maker,
         \ 'bufnr': a:options.bufnr,
         \ 'file_mode': a:options.file_mode,
         \ 'ft': a:options.ft,
-        \ }, a:options)
+        \ }, a:options))
 
     let maker = jobinfo.maker
 
@@ -294,6 +302,8 @@ function! s:MakeJob(make_id, options) abort
                 call neomake#utils#ErrorMessage(error, jobinfo)
                 return s:handle_next_maker(jobinfo)
             endif
+
+            call neomake#utils#hook('NeomakeJobStarted', {'jobinfo': jobinfo})
         else
             let jobinfo.id = job_id
             let s:jobs[job_id] = jobinfo

@@ -29,3 +29,31 @@ Execute (NeomakeJobFinished):
     AssertEqual jobinfo.file_mode, 0
     AssertEqual jobinfo.bufnr, bufnr('%')
   endif
+
+Execute (NeomakeJobStarted can renice process):
+  if NeomakeAsyncTestsSetup()
+    let maker = NeomakeTestsCommandMaker('nice-sleep', 'sleep 1')
+
+    function! NeomakeTestJobStarted(context) abort
+      AssertEqual keys(a:context), ['jobinfo']
+      let pid = a:context.jobinfo.get_pid()
+      call system(printf('renice 19 %d', pid))
+    endfunction
+    augroup neomake_tests
+      au User NeomakeJobStarted call NeomakeTestJobStarted(g:neomake_hook_context)
+    augroup END
+
+    let job = neomake#Make(0, [maker])
+    let pid = neomake#GetJob(job[0]).get_pid()
+
+    " Prefer procfs, since 'ps' in busybox cannot select a single PID.
+    let proc_stat = printf('/proc/%d/stat', pid)
+    if filereadable(proc_stat)
+      let niceness = split(readfile(proc_stat)[0])[18]
+    else
+      let niceness = substitute(system(printf('ps -o nice= %d', pid)), '\v\s+|\n', '', 'g')
+    endif
+    AssertEqual niceness, '19'
+
+    NeomakeCancelJobs!
+  endif
