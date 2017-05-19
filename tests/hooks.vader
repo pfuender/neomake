@@ -32,7 +32,7 @@ Execute (NeomakeJobFinished):
 
 Execute (NeomakeJobStarted can renice process):
   if NeomakeAsyncTestsSetup()
-    let maker = NeomakeTestsCommandMaker('nice-sleep', 'sleep 1')
+    let maker = NeomakeTestsCommandMaker('nice-sleep', 'sleep .1')
 
     function! NeomakeTestJobStarted(context) abort
       AssertEqual keys(a:context), ['jobinfo']
@@ -55,7 +55,13 @@ Execute (NeomakeJobStarted can renice process):
     endif
     AssertEqual niceness, '19'
 
-    NeomakeCancelJobs!
+    if has('nvim') && !has('nvim-0.2.0')
+      " Really wait for jobs to finish, otherwise it fails when reloading
+      " autoload/neomake.vim with E127 (Cannot redefine function) later.
+      NeomakeTestsWaitForRemovedJobs
+    else
+      NeomakeCancelJobs!
+    endif
   endif
 
 Execute (NeomakeJobInit can make processes nicer):
